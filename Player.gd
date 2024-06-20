@@ -1,38 +1,37 @@
-extends Spatial
+extends Node3D
 
-onready var timerprocessor: = $Timer
-onready var tween: = $Tween
-onready var forward: = $RayForward
-onready var back: = $RayBack
-onready var right: = $RayRight
-onready var left: = $RayLeft
-func collision_check(direction):
+@onready var timerprocessor: = $Timer
+@onready var forward: = $RayForward
+@onready var back: = $RayBack
+@onready var right: = $RayRight
+@onready var left: = $RayLeft
+
+func collision_check(direction : RayCast3D):
 	if direction != null:
 		return direction.is_colliding()
 	else:
 		return false
 
 func get_direction(direction):
-	if not direction is RayCast: return
+	if not direction is RayCast3D: return
 	return direction.get_collider().global_transform.origin - global_transform.origin
 
 func tween_translation(change):
 	$AnimationPlayer.play("Step")
-	tween.interpolate_property(
-		self, "translation", translation, translation + change,
-		0.5, Tween.TRANS_QUAD, Tween.EASE_IN_OUT
-	)
-	tween.start()
-	yield(tween, "tween_completed")
+	var tween = get_tree().create_tween()
+	tween.set_ease(Tween.EASE_IN_OUT)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(self, "position", position + change, 0.5)
+	tween.play()
+	await tween.finished
 
 func tween_rotation(change):
-	tween.interpolate_property(
-		self, "rotation", rotation, rotation + Vector3(0, change, 0),
-		0.5, Tween.TRANS_QUAD, Tween.EASE_IN_OUT
-	)
-	tween.start()
-	yield(tween, "tween_completed")
-
+	var tween = get_tree().create_tween()
+	tween.set_ease(Tween.EASE_IN_OUT)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(self, "rotation", rotation + Vector3(0, change, 0), 0.5)
+	tween.play()
+	await tween.finished
 
 func _on_Timer_timeout() -> void:
 	var GO_W := Input.is_action_pressed("forward")
@@ -45,7 +44,6 @@ func _on_Timer_timeout() -> void:
 	var ray_dir
 	var turn_dir = int(TURN_Q) - int(TURN_E)
 
-
 	if GO_W: 
 		ray_dir = forward
 	elif GO_S: 
@@ -56,10 +54,10 @@ func _on_Timer_timeout() -> void:
 		ray_dir = right
 	elif turn_dir:
 		timerprocessor.stop()
-		yield(tween_rotation(PI/2 * turn_dir), "completed")
+		await tween_rotation(PI/2 * turn_dir)
 		timerprocessor.start()
 
 	if collision_check(ray_dir):
 		timerprocessor.stop()
-		yield(tween_translation(get_direction(ray_dir)), "completed")
+		await tween_translation(get_direction(ray_dir))
 		timerprocessor.start()
